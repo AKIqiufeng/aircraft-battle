@@ -64,8 +64,7 @@ def main():
     pg.time.set_timer(moving, 100)
 
     while True:
-        pg.display.set_caption(str(clock.get_fps()))
-        screen.fill("white")
+        pg.display.set_caption("飞机大战")
         screen.blit(bg, bgRect)
 
         player.draw(screen)
