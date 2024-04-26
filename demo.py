@@ -1,9 +1,16 @@
+from random import randint
+
 import pygame as pg
 from pygame.locals import *
 import os
 
 WIDTH = 480
 HEIGHT = 700
+PLAYERSPEED = 5
+BULLETSPEED = 5
+ENEMYSPEED = 1
+ENEMYRATES = 1000
+BULLETRATES = 300
 
 
 def load_animation(imageName):  # 加载帧序列图片
@@ -19,16 +26,46 @@ def load_animation(imageName):  # 加载帧序列图片
     return images
 
 
+def collide_mask(mask1, mask2, pos1, pos2):  # 用于检测Mask碰撞的函数
+    return mask1.overlap(mask2, (pos2[0] - pos1[0], pos2[1] - pos1[1]))
+
+
 class Player(pg.sprite.Sprite):  # 玩家类
-    def __init__(self):
+    def __init__(self, *group):
+        super().__init__(*group)
+
         self.images = load_animation("./resource/image/me{}.png")
         self.imageIdx = 0
+        self.lastAniTime = 0
         self.image = self.images[0]
         self.rect = self.image.get_rect(midbottom=(WIDTH / 2, HEIGHT))
-        self.move = [0, 0]
+        self.mask = pg.mask.from_surface(self.image)
 
-    def draw(self, screen):  # 绘制玩家飞机
-        screen.blit(self.image, self.rect)
+        self.lifeNum = 3
+
+    def update(self):  # 更新玩家图片，实现动画效果
+        for enemy1 in enemy_group:  # 遍历敌机组（也可以写成enemy_group.sprites()）
+            if collide_mask(self.mask, enemy.mask, self.rect, enemy.rect):  # 判断玩家是否与敌机发生碰撞
+                enemy1.kill()
+                self.lifeNum -= 1
+                if self.lifeNum == 0:
+                    pg.quit()
+
+        nowtime = pg.time.get_ticks()
+        if nowtime - self.lastAniTime > 100:
+            self.lastAniTime = nowtime
+            self.imageIdx += 1
+            self.image = self.images[self.imageIdx % len(self.images)]
+
+        key = pg.key.get_pressed()  # 读取键盘移动，按下时持续移动
+        if key[K_LEFT]:
+            self.rect.x -= PLAYERSPEED
+        elif key[K_RIGHT]:
+            self.rect.x += PLAYERSPEED
+        if key[K_UP]:
+            self.rect.y -= PLAYERSPEED
+        elif key[K_DOWN]:
+            self.rect.y += PLAYERSPEED
 
         if self.rect.left < 0:  # 移动到边界判断
             self.rect.left = 0
@@ -39,51 +76,91 @@ class Player(pg.sprite.Sprite):  # 玩家类
         elif self.rect.bottom > HEIGHT:
             self.rect.bottom = HEIGHT
 
-    def update_idx(self):  # 更新玩家图片，实现动画效果
-        self.imageIdx += 1
-        self.image = self.images[self.imageIdx % len(self.images)]
+
+class Enemy1(pg.sprite.Sprite):  # 敌人1类
+    def __init__(self, *group):
+        super().__init__(*group)
+
+        self.image = pg.image.load("./resource/image/enemy1.png")
+        self.rect = self.image.get_rect(bottom=0, centerx=randint(29, WIDTH-29))
+        self.mask = pg.mask.from_surface(self.image)
+        self.lastAniTime = 0
+        self.downImages = load_animation("./resource/image/enemy1_down{}.png")
+        self.downIdx = 0
+        self.die = 0
+
+    def update(self):
+
+        self.rect.y += ENEMYSPEED  # 移动敌机
+        if self.rect.y > HEIGHT:  # 如果敌机飞出屏幕则移除此精灵
+            self.kill()
+
+        nowtime = pg.time.get_ticks()
+        if nowtime - self.lastAniTime > 100:
+            self.lastAniTime = nowtime
+            if self.die == 1:
+                self.downIdx += 1
+                if self.downIdx > 3:
+                    self.kill()
+                self.image = self.downImages[self.downIdx % len(self.downImages)]
 
 
-def main():
-    pg.init()  # 初始化
-    screen = pg.display.set_mode((WIDTH, HEIGHT))  # 设置窗口大小
-    clock = pg.time.Clock()  # 设置时钟，用以帧数控制
-    pg.display.set_caption("飞机大战")  # 窗口标题
+class Bullet(pg.sprite.Sprite):
+    def __init__(self, *group):
+        super().__init__(*group)
+        self.image = pg.image.load("./resource/image/bullet1.png")
+        self.rect = self.image.get_rect(midbottom=player.rect.midtop)
+        self.mask = pg.mask.from_surface(self.image)
 
-    bg = pg.image.load("./resource/image/background.png")  # 加载背景图片
-    bgRect = bg.get_rect()
-    bgRect.topleft = (0, 0)
-
-    player = Player()  # 实例化玩家飞机对象
-    speed = 5  # 设置初始移动速度
-
-    moving = pg.event.Event(USEREVENT)  # 定义移动事件 用以更新动画
-    pg.time.set_timer(moving, 100)  # 移动事件每0.1秒触发一次
-
-    while True:
-
-        screen.blit(bg, bgRect)  # 显示背景图片
-        player.draw(screen)  # 绘制玩家飞机
-        key = pg.key.get_pressed()  # 读取键盘移动，按下时持续移动
-
-        if key[K_LEFT]:
-            player.rect.x -= speed
-        elif key[K_RIGHT]:
-            player.rect.x += speed
-        if key[K_UP]:
-            player.rect.y -= speed
-        elif key[K_DOWN]:
-            player.rect.y += speed
-
-        for event in pg.event.get():  # 读取事件列表
-            if event.type == QUIT:  # 退出事件
-                pg.quit()
-            elif event.type == moving.type:  # 读取移动事件，更新玩家飞机图片
-                player.update_idx()
-
-        clock.tick(144)  # 最大帧率设置为144
-        pg.display.flip()  # 刷新绘制内容
+    def update(self):
+        self.rect.y -= BULLETSPEED
+        if self.rect.bottom < 0:  # 如果子弹飞出屏幕则移除此精灵
+            self.kill()
 
 
-if __name__ == "__main__":
-    main()
+pg.init()  # 初始化
+screen = pg.display.set_mode((WIDTH, HEIGHT))  # 设置窗口大小
+clock = pg.time.Clock()  # 设置时钟，用以帧数控制
+pg.display.set_caption("飞机大战")  # 窗口标题
+
+bg = pg.image.load("./resource/image/background.png")  # 加载背景图片
+bgRect = bg.get_rect()
+bgRect.topleft = (0, 0)
+
+all_group = pg.sprite.Group()
+enemy_group = pg.sprite.Group()
+bullet_group = pg.sprite.Group()
+
+player = Player(all_group)  # 实例化玩家飞机对象
+# 设置初始移动速度
+
+last_add_enemy = 0
+last_add_bullet = 0
+
+while True:
+
+    screen.blit(bg, bgRect)  # 显示背景图片
+    all_group.draw(screen)  # 绘制所有对象
+
+    all_group.update()
+
+    col = pg.sprite.groupcollide(bullet_group, enemy_group, True, False)
+    for enemys in col.values():
+        for enemy in enemys:
+            enemy.die = 1
+
+    now = pg.time.get_ticks()  # 获取游戏运行时间(ms)
+    if now - last_add_enemy > ENEMYRATES:  # 每隔ENEMYRATES毫秒添加一次敌机
+        last_add_enemy = now
+        enemy_group.add(Enemy1(all_group, enemy_group))
+
+    if now - last_add_bullet > BULLETRATES:
+        last_add_bullet = now
+        bullet_group.add(Bullet(all_group, bullet_group))
+
+    for event in pg.event.get():  # 读取事件列表
+        if event.type == QUIT:  # 退出事件
+            pg.quit()
+
+    clock.tick(144)  # 最大帧率设置为144
+    pg.display.flip()  # 刷新绘制内容
