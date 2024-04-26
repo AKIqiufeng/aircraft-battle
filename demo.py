@@ -19,7 +19,7 @@ def load_animation(imageName):  # 加载帧序列图片
     return images
 
 
-class Player:  # 玩家类
+class Player(pg.sprite.Sprite):  # 玩家类
     def __init__(self):
         self.images = load_animation("./resource/image/me{}.png")
         self.imageIdx = 0
@@ -29,9 +29,6 @@ class Player:  # 玩家类
 
     def draw(self, screen):  # 绘制玩家飞机
         screen.blit(self.image, self.rect)
-
-        self.rect.x += self.move[0]  # 更新移动后坐标
-        self.rect.y += self.move[1]
 
         if self.rect.left < 0:  # 移动到边界判断
             self.rect.left = 0
@@ -67,31 +64,20 @@ def main():
 
         screen.blit(bg, bgRect)  # 显示背景图片
         player.draw(screen)  # 绘制玩家飞机
+        key = pg.key.get_pressed()  # 读取键盘移动，按下时持续移动
+
+        if key[K_LEFT]:
+            player.rect.x -= speed
+        elif key[K_RIGHT]:
+            player.rect.x += speed
+        if key[K_UP]:
+            player.rect.y -= speed
+        elif key[K_DOWN]:
+            player.rect.y += speed
 
         for event in pg.event.get():  # 读取事件列表
             if event.type == QUIT:  # 退出事件
                 pg.quit()
-
-            elif event.type == KEYDOWN:  # 读取键盘移动，按下时持续移动
-                if event.key == K_LEFT:
-                    player.move[0] -= speed
-                elif event.key == K_RIGHT:
-                    player.move[0] += speed
-                elif event.key == K_UP:
-                    player.move[1] -= speed
-                elif event.key == K_DOWN:
-                    player.move[1] += speed
-
-            elif event.type == KEYUP:  # 松手时不移动
-                if event.key == K_LEFT:
-                    player.move[0] = 0
-                elif event.key == K_RIGHT:
-                    player.move[0] = 0
-                elif event.key == K_UP:
-                    player.move[1] = 0
-                elif event.key == K_DOWN:
-                    player.move[1] = 0
-
             elif event.type == moving.type:  # 读取移动事件，更新玩家飞机图片
                 player.update_idx()
 
