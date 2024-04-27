@@ -1,8 +1,8 @@
 from random import randint
-
 import pygame as pg
 from pygame.locals import *
 import os
+
 
 WIDTH = 480
 HEIGHT = 700
@@ -10,7 +10,7 @@ PLAYERSPEED = 5
 BULLETSPEED = 5
 ENEMYSPEED = 1
 ENEMYRATES = 1000
-BULLETRATES = 300
+BULLETRATES = 200
 
 
 def load_animation(imageName):  # 加载帧序列图片
@@ -40,12 +40,14 @@ class Player(pg.sprite.Sprite):  # 玩家类
         self.image = self.images[0]
         self.rect = self.image.get_rect(midbottom=(WIDTH / 2, HEIGHT))
         self.mask = pg.mask.from_surface(self.image)
+        self.downImages = load_animation("./resource/image/me_destroy_{}.png")
+        self.downIdx = 0
 
         self.lifeNum = 3
 
     def update(self):  # 更新玩家图片，实现动画效果
         for enemy1 in enemy_group:  # 遍历敌机组（也可以写成enemy_group.sprites()）
-            if collide_mask(self.mask, enemy.mask, self.rect, enemy.rect):  # 判断玩家是否与敌机发生碰撞
+            if collide_mask(self.mask, enemy1.mask, self.rect, enemy1.rect):  # 判断玩家是否与敌机发生碰撞
                 enemy1.kill()
                 self.lifeNum -= 1
                 if self.lifeNum == 0:
@@ -88,6 +90,7 @@ class Enemy1(pg.sprite.Sprite):  # 敌人1类
         self.downImages = load_animation("./resource/image/enemy1_down{}.png")
         self.downIdx = 0
         self.die = 0
+        self.sound = pg.mixer.Sound("./resource/sound/enemy1_down.wav")
 
     def update(self):
 
@@ -99,10 +102,12 @@ class Enemy1(pg.sprite.Sprite):  # 敌人1类
         if nowtime - self.lastAniTime > 100:
             self.lastAniTime = nowtime
             if self.die == 1:
+                if self.downIdx == 0:
+                    self.sound.play()
                 self.downIdx += 1
+                self.image = self.downImages[self.downIdx % len(self.downImages)]
                 if self.downIdx > 3:
                     self.kill()
-                self.image = self.downImages[self.downIdx % len(self.downImages)]
 
 
 class Bullet(pg.sprite.Sprite):
@@ -119,9 +124,16 @@ class Bullet(pg.sprite.Sprite):
 
 
 pg.init()  # 初始化
+pg.mixer.pre_init()
+
 screen = pg.display.set_mode((WIDTH, HEIGHT))  # 设置窗口大小
 clock = pg.time.Clock()  # 设置时钟，用以帧数控制
 pg.display.set_caption("飞机大战")  # 窗口标题
+
+
+pg.mixer.music.load("./resource/sound/game_music.ogg")  # 设置背景音乐
+pg.mixer.music.play(-1)
+pg.mixer.music.set_volume(0.5)
 
 bg = pg.image.load("./resource/image/background.png")  # 加载背景图片
 bgRect = bg.get_rect()
@@ -136,6 +148,7 @@ player = Player(all_group)  # 实例化玩家飞机对象
 
 last_add_enemy = 0
 last_add_bullet = 0
+enemy1Num = 2
 
 while True:
 
@@ -152,7 +165,8 @@ while True:
     now = pg.time.get_ticks()  # 获取游戏运行时间(ms)
     if now - last_add_enemy > ENEMYRATES:  # 每隔ENEMYRATES毫秒添加一次敌机
         last_add_enemy = now
-        enemy_group.add(Enemy1(all_group, enemy_group))
+        for i in range(enemy1Num):
+            enemy_group.add(Enemy1(all_group, enemy_group))
 
     if now - last_add_bullet > BULLETRATES:
         last_add_bullet = now
