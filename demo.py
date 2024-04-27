@@ -15,10 +15,10 @@ BULLETRATES = 200
 
 def load_animation(imageName):  # 加载帧序列图片
     images = []
-    i = 0
+    count = 0
     while True:
-        i += 1
-        fileName = imageName.format(i)
+        count += 1
+        fileName = imageName.format(count)
         if os.path.exists(fileName):
             images.append(pg.image.load(fileName))
         else:
