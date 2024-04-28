@@ -175,6 +175,7 @@ while True:
     for event in pg.event.get():  # 读取事件列表
         if event.type == QUIT:  # 退出事件
             pg.quit()
+            exit()
 
     clock.tick(144)  # 最大帧率设置为144
     pg.display.flip()  # 刷新绘制内容
