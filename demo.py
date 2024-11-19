@@ -13,6 +13,7 @@ ENEMYSPEED = 1
 ENEMYRATES = 1000
 BULLETRATES = 200
 
+score = 0
 
 @functools.lru_cache()
 def load_animation(imageName):  # 加载帧序列图片
@@ -48,6 +49,7 @@ class Player(pg.sprite.Sprite):  # 玩家类
         self.deathIdx = 0  # 用于跟踪死亡动画的索引
         self.invincible_end_time = 0
         self.death_animation_timer = 0
+        self.death_sound = pg.mixer.Sound("./resource/sound/me_down.wav")
 
         # 加载生命素材
         self.life_image = pg.image.load("./resource/image/life.png").convert_alpha()
@@ -74,12 +76,13 @@ class Player(pg.sprite.Sprite):  # 玩家类
                         # 设置无敌时间和死亡动画
                         self.invincible_end_time = pg.time.get_ticks() + 3000  # 3秒
                         self.deathIdx = 0  # 重置死亡动画索引
+                        self.death_sound.play()
                         self.death_animation_timer = pg.time.get_ticks()  # 重置死亡动画计时器
 
         # 播放死亡动画
         if self.invincible_end_time > pg.time.get_ticks():
             current_time = pg.time.get_ticks()
-            if current_time - self.death_animation_timer > 100:  # 检查是否已过100ms
+            if current_time - self.death_animation_timer > 50:  # 检查是否已过100ms
                 if self.deathIdx < len(self.deathImages):
                     self.image = self.deathImages[self.deathIdx]
                     self.deathIdx = self.deathIdx + 1
@@ -166,6 +169,8 @@ class Bullet(pg.sprite.Sprite):
 pg.init()  # 初始化
 pg.mixer.pre_init()
 
+score_font = pg.font.Font(None, 36)  # 设置分数字体和大小
+
 screen = pg.display.set_mode((WIDTH, HEIGHT))  # 设置窗口大小
 clock = pg.time.Clock()  # 设置时钟，用以帧数控制
 pg.display.set_caption("飞机大战")  # 窗口标题
@@ -200,6 +205,10 @@ while True:
     for enemys in col.values():
         for enemy in enemys:
             enemy.die = 1
+            score += 10  # 假设每击中一个敌机增加10分
+
+    score_text = score_font.render("Score: {}".format(score), True, (255, 255, 255))  # 创建分数文本
+    screen.blit(score_text, (WIDTH-150, 10))  # 在屏幕上绘制分数文本
 
     now = pg.time.get_ticks()  # 获取游戏运行时间(ms)
     if now - last_add_enemy > ENEMYRATES:  # 每隔ENEMYRATES毫秒添加一次敌机
